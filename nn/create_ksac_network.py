@@ -25,7 +25,6 @@ class KSAC_network(tf.keras.Model):
         x = tf.keras.Input(input_shape)
         x1, x2 = resnet_backbone(x)
         print(x.shape)
-        # print(x1.shape, x2.shape)
         x2 = KSAC_block(filters, x2.shape, dilation_rate, batchnorm)(x2)
         print(x.shape)
         logits = DeepLabV3_Decoder(filters, n_classes, input_shape[:-1])(x1,x2)
@@ -56,22 +55,4 @@ class KSAC_network(tf.keras.Model):
             #'accuracy': self.accuracy_metric.result()
         }
 
-#def create_ksac_model(input_shape, n_classes, filters, dilation_rate = [6,12,18], batchnorm=True):
-#    resnet_backbone = applications.resnet50.ResNet50(
-#        include_top=False,
-#        weights='imagenet',
-#        input_tensor=None,
-#        input_shape=input_shape,
-#        pooling=None,
-#        classes=1000,
-#    )
-#    resnet_backbone = tf.keras.Model(inputs=resnet_backbone.inputs,
-#                                     outputs=[resnet_backbone.get_layer('conv3_block4_out').output,
-#                                              resnet_backbone.get_layer('conv4_block6_out').output])#
-
-#    x = tf.keras.Input(input_shape)
-#    x1, x2 = resnet_backbone(x)
-    #print(x1.shape, x2.shape)
-#    x2 = KSAC_block(filters, x2.shape)(x2)
-#    logits = DeepLabV3_Decoder(filters, n_classes, input_shape[:-1])(x1,x2)
-#    return tf.keras.Model(inputs=x, outputs=logits)
+test_ksac = KSAC_network
