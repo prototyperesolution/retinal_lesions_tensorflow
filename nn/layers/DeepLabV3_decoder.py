@@ -20,3 +20,5 @@ class DeepLabV3_Decoder(tf.keras.layers.Layer):
         x = self.conv2(x)
         x = tf.image.resize(images=x, size=self.out_size)
         return x
+
+    """testing"""
