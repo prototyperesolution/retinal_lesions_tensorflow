@@ -7,7 +7,7 @@ from nn.layers.DeepLabV3_decoder import DeepLabV3_Decoder
 from utils.losses import focal_loss
 
 class KSAC_network(tf.keras.Model):
-    def __init__(self, input_shape, n_classes, filters, dilation_rate=[6,12,18], batchnorm=True):
+    def __init__(self, input_shape, n_classes, filters=128, dilation_rate=[6,12,18], batchnorm=True):
         super().__init__()
         resnet_backbone = applications.resnet50.ResNet50(
             include_top=False,
@@ -17,7 +17,6 @@ class KSAC_network(tf.keras.Model):
             pooling=None,
             classes=1000,
         )
-        print(resnet_backbone.summary())
         resnet_backbone = tf.keras.Model(inputs=resnet_backbone.inputs,
                                          outputs=[resnet_backbone.get_layer('conv3_block4_out').output,
                                                   resnet_backbone.get_layer('conv4_block6_out').output])
