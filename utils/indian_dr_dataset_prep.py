@@ -33,7 +33,7 @@ def prep_batch(x,y,batch_size, img_size=(256,256)):
         masks = np.zeros((img_size[0],img_size[1],5))
         i = 0
         for mask in y[index]:
-            masks[:,:,i] = cv2.resize(cv2.imread(mask),img_size)[:,:,0]/255
+            masks[:,:,i] = cv2.resize(cv2.cvtColor(cv2.imread(mask),cv2.COLOR_BGR2RGB),img_size)[:,:,0]/255
             i += 1
         y_imgs.append(masks)
 

@@ -1,11 +1,13 @@
+import cv2
 import tensorflow as tf
 import numpy as np
 from fastprogress import master_bar, progress_bar
 from utils.indian_dr_dataset_prep import prep_batch, prep_dataset
-from .utils.losses import focal_loss
+from utils.losses import focal_loss
 import random
 import math
 import tqdm
+import cv2
 
 class TrainerConfig:
     # optimization parameters
@@ -58,8 +60,9 @@ class Trainer:
                     logits = self.model(X, training=True)
 
                     l1_loss = tf.nn.softmax_cross_entropy_with_logits(Y, logits, axis=-1, name=None)
-
-                    #train_accuracy.update_state(self.iou_metric(Y, logits))
+                    for_metric = tf.argmax(logits, axis = -1)
+                    #print(l1_loss)
+                    train_accuracy.update_state(self.iou_metric(tf.argmax(Y, axis=-1), for_metric))
 
                 grads = tape.gradient(l1_loss, self.model.trainable_variables)
                 self.optimizer.apply_gradients(list(zip(grads, self.model.trainable_variables)))
@@ -93,6 +96,9 @@ class Trainer:
             for epoch in epoch_bar:
                 for i in progress_bar(range(self.config.batches_per_epoch), total=self.config.batches_per_epoch, parent=epoch_bar):
                     inputs = prep_batch(self.train_dataset[0], self.train_dataset[1], self.config.batch_size)
+                    #cv2.imshow('window',inputs[0][0])
+                    #cv2.waitKey(0)
+                    #cv2.destroyAllWindows()
                     loss = train_step(inputs)
                     self.tokens += tf.reduce_sum(tf.cast(inputs[1] >= 0, tf.int32)).numpy()
                     train_loss_metric(loss)
