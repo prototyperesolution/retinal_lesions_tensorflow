@@ -25,7 +25,7 @@ def prep_dataset(path_to_dataset):
     return(x_train,y_train,x_test,y_test)
 
 
-def prep_batch(x,y,batch_size, img_size=(128,128)):
+def prep_batch(x,y,batch_size, img_size=(256,256)):
     x_imgs, y_imgs = [],[]
     indices = np.array([random.randint(0,len(x)-1) for _ in range(batch_size)])
     for index in indices:
@@ -37,7 +37,7 @@ def prep_batch(x,y,batch_size, img_size=(128,128)):
             i += 1
         y_imgs.append(masks)
 
-    return(x_imgs, y_imgs)
+    return(np.array(x_imgs), np.array(y_imgs))
 
 
 

@@ -5,6 +5,7 @@ from utils.indian_dr_dataset_prep import prep_batch, prep_dataset
 from utils.losses import focal_loss
 import random
 import math
+import tqdm
 
 class TrainerConfig:
     # optimization parameters
@@ -27,9 +28,7 @@ class Trainer:
         """datasets are stored as x,y arrays of filenames"""
         self.train_dataset = train_dataset
         self.test_dataset = test_dataset
-        self.iou_metric = tf.keras.metrics.MeanIoU(num_classes = len(train_dataset[1][0]),
-                                                   sparse_y_true = False,
-                                                   sparse_y_pred = False)
+        self.iou_metric = tf.keras.metrics.MeanIoU( num_classes =len(self.train_dataset[1][0]))
         self.config = config
         self.tokens = 0
         self.strategy = tf.distribute.OneDeviceStrategy("GPU:0")
@@ -60,7 +59,7 @@ class Trainer:
 
                     l1_loss = tf.nn.softmax_cross_entropy_with_logits(Y, logits, axis=-1, name=None)
 
-                    train_accuracy.update_state(self.iou_metric(Y, logits))
+                    #train_accuracy.update_state(self.iou_metric(Y, logits))
 
                 grads = tape.gradient(l1_loss, self.model.trainable_variables)
                 self.optimizer.apply_gradients(list(zip(grads, self.model.trainable_variables)))
@@ -80,7 +79,7 @@ class Trainer:
                 l1_loss = tf.nn.softmax_cross_entropy_with_logits(Y, logits, axis=-1, name=None)
 
 
-                test_accuracy.update_state(self.iou_metric(Y, logits))
+                #test_accuracy.update_state(self.iou_metric(Y, logits))
 
                 return l1_loss
 

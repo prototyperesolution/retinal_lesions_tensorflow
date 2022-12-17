@@ -17,17 +17,18 @@ class KSAC_network(tf.keras.Model):
             pooling=None,
             classes=1000,
         )
-        resnet_backbone = tf.keras.Model(inputs=resnet_backbone.inputs,
+        self.resnet_backbone = tf.keras.Model(inputs=resnet_backbone.inputs,
                                          outputs=[resnet_backbone.get_layer('conv3_block4_out').output,
                                                   resnet_backbone.get_layer('conv4_block6_out').output])
 
+        self.ksac = KSAC_block(filters, self.resnet_backbone.output_shape[1], dilation_rate, batchnorm)
+        self.decoder = DeepLabV3_Decoder(filters, n_classes, input_shape[:-1])
 
-        x = tf.keras.Input(input_shape)
-        x1, x2 = resnet_backbone(x)
-        x2 = KSAC_block(filters, x2.shape, dilation_rate, batchnorm)(x2)
-        logits = DeepLabV3_Decoder(filters, n_classes, input_shape[:-1])(x1,x2)
-        self.model = tf.keras.Model(inputs=x, outputs=logits)
-        self.loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+    def call(self,x):
+        x1,x2 = self.resnet_backbone(x)
+        x2 = self.ksac(x2)
+        logits = self.decoder(x1,x2)
+        return logits
 
     def compile(self, optimizer, *args, **kwargs):
         self.focal_loss_metric = keras.metrics.Mean(name="focal_loss")
