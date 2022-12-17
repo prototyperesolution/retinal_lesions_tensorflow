@@ -9,6 +9,7 @@ import math
 import tqdm
 import cv2
 
+
 class TrainerConfig:
     # optimization parameters
     max_epochs = 10
@@ -45,9 +46,8 @@ class Trainer:
 
         train_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
         test_loss_metric = tf.keras.metrics.Mean('testing_loss', dtype=tf.float32)
-
-        train_accuracy = tf.keras.metrics.Accuracy('training_accuracy', dtype=tf.float32)
-        test_accuracy = tf.keras.metrics.Accuracy('testing_accuracy', dtype=tf.float32)
+        train_iou_metric = tf.keras.metrics.MeanIoU(num_classes=5)#, sparse_y_true=False, sparse_y_pred=False)
+        test_iou_metric = tf.keras.metrics.MeanIoU(num_classes=5)# sparse_y_true=False, sparse_y_pred=False)
 
 
         def train_step(inputs):
@@ -58,11 +58,9 @@ class Trainer:
                 # print(X.shape)
                 with tf.GradientTape() as tape:
                     logits = self.model(X, training=True)
+                    l1_loss = self.cce(Y, logits)
 
-                    l1_loss = tf.nn.softmax_cross_entropy_with_logits(Y, logits, axis=-1, name=None)
-                    for_metric = tf.argmax(logits, axis = -1)
-                    #print(l1_loss)
-                    train_accuracy.update_state(self.iou_metric(tf.argmax(Y, axis=-1), for_metric))
+                    train_iou_metric.update_state(tf.argmax(Y, axis=-1), tf.argmax(logits, axis=-1))
 
                 grads = tape.gradient(l1_loss, self.model.trainable_variables)
                 self.optimizer.apply_gradients(list(zip(grads, self.model.trainable_variables)))
@@ -79,11 +77,8 @@ class Trainer:
                 X, Y = inputs
                 """setting training to false to disable the dropout layers"""
                 logits = self.model(X, training=False)
-                l1_loss = tf.nn.softmax_cross_entropy_with_logits(Y, logits, axis=-1, name=None)
-
-
-                #test_accuracy.update_state(self.iou_metric(Y, logits))
-
+                l1_loss = self.cce(Y, logits)
+                test_iou_metric.update_state(tf.argmax(Y, axis=-1), tf.argmax(logits, axis=-1))
                 return l1_loss
 
             per_example_losses = self.strategy.run(step_fn, args=(inputs,))
@@ -102,11 +97,11 @@ class Trainer:
                     loss = train_step(inputs)
                     self.tokens += tf.reduce_sum(tf.cast(inputs[1] >= 0, tf.int32)).numpy()
                     train_loss_metric(loss)
-                    epoch_bar.child.comment = f'training loss : {train_loss_metric.result()}'
+                    epoch_bar.child.comment = f'training loss : {train_loss_metric.result()} training iou : {train_iou_metric.result()}'
                 print(
-                    f"epoch {epoch + 1}: train loss {train_loss_metric.result():.5f}. train accuracy {train_accuracy.result():.5f}")
+                    f"epoch {epoch + 1}: train loss {train_loss_metric.result():.5f}. train iou {train_iou_metric.result():.5f}")
                 train_loss_metric.reset_states()
-                train_accuracy.reset_states()
+                train_iou_metric.reset_states()
 
                 if self.test_dataset:
                     for i in progress_bar(range(self.config.batches_per_epoch), total=self.config.batches_per_epoch, parent=epoch_bar):
@@ -115,6 +110,6 @@ class Trainer:
                         test_loss_metric(loss)
                         epoch_bar.child.comment = f'testing loss : {test_loss_metric.result()}'
                     print(
-                        f"epoch {epoch + 1}: test loss {test_loss_metric.result():.5f}. test accuracy {test_accuracy.result():.5f}")
+                        f"epoch {epoch + 1}: test loss {test_loss_metric.result():.5f}. test iou {test_iou_metric.result():.5f}")
                     test_loss_metric.reset_states()
-                    test_accuracy.reset_states()
+                    test_iou_metric.reset_states()

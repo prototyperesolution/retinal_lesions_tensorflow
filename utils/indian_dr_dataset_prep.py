@@ -28,14 +28,16 @@ def prep_dataset(path_to_dataset):
 def prep_batch(x,y,batch_size, img_size=(256,256)):
     x_imgs, y_imgs = [],[]
     indices = np.array([random.randint(0,len(x)-1) for _ in range(batch_size)])
+    """some samples have different segmentation results available, so need to do something consistent with them"""
+    classes = ['MA','HE','EX','SE','OD']
     for index in indices:
         x_imgs.append(cv2.resize(cv2.cvtColor(cv2.imread(x[index]), cv2.COLOR_BGR2RGB),img_size)/255)
         masks = np.zeros((img_size[0],img_size[1],5))
-        i = 0
         for mask in y[index]:
-            masks[:,:,i] = cv2.resize(cv2.cvtColor(cv2.imread(mask),cv2.COLOR_BGR2RGB),img_size)[:,:,0]/255
-            i += 1
+            ID = mask[-6:-4]
+            masks[:,:,classes.index(ID)] = cv2.resize(cv2.cvtColor(cv2.imread(mask),cv2.COLOR_BGR2RGB),img_size)[:,:,0]/255
         y_imgs.append(masks)
+
 
     return(np.array(x_imgs), np.array(y_imgs))
 
