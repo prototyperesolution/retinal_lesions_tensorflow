@@ -1,4 +1,4 @@
-from nn.train.trainer import Trainer, TrainerConfig
+from trainer import Trainer, TrainerConfig
 from nn.create_ksac_network import KSAC_network
 from utils.indian_dr_dataset_prep import prep_dataset
 import tensorflow as tf

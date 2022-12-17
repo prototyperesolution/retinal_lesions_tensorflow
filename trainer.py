@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from fastprogress import master_bar, progress_bar
 from utils.indian_dr_dataset_prep import prep_batch, prep_dataset
-from utils.losses import focal_loss
+from .utils.losses import focal_loss
 import random
 import math
 import tqdm
