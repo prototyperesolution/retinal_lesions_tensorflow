@@ -15,7 +15,7 @@ class TrainerConfig:
     max_epochs = 10
     batch_size = 64
     learning_rate = 1e-3
-    batches_per_epoch = 200
+    #batches_per_epoch = 200
     # checkpoint settings
     ckpt_path = None
 
@@ -89,7 +89,7 @@ class Trainer:
         epoch_bar = master_bar(range(self.config.max_epochs))
         with self.strategy.scope():
             for epoch in epoch_bar:
-                for i in progress_bar(range(self.config.batches_per_epoch), total=self.config.batches_per_epoch, parent=epoch_bar):
+                for i in progress_bar(range(len(self.train_dataset[0]*3)//self.config.batch_size), total=len(self.train_dataset[0]*3)//self.config.batch_size, parent=epoch_bar):
                     inputs = prep_batch(self.train_dataset[0], self.train_dataset[1], self.config.batch_size)
                     #cv2.imshow('window',inputs[0][0])
                     #cv2.waitKey(0)
@@ -104,7 +104,7 @@ class Trainer:
                 train_iou_metric.reset_states()
 
                 if self.test_dataset:
-                    for i in progress_bar(range(self.config.batches_per_epoch), total=self.config.batches_per_epoch, parent=epoch_bar):
+                    for i in progress_bar(range(len(self.test_dataset[0]*3)//self.config.batch_size), total=len(self.test_dataset[0]*3)//self.config.batch_size, parent=epoch_bar):
                         inputs = prep_batch(self.test_dataset[0],self.test_dataset[1],self.config.batch_size)
                         loss = test_step(inputs)
                         test_loss_metric(loss)
