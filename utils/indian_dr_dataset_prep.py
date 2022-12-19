@@ -91,7 +91,7 @@ def load_dataset(path_to_dataset, img_size):
                                              :, 0] / 255
         y_test_img.append(masks)
 
-    return x_train_img, y_train_img, x_test_img, y_test_img
+    return np.array(x_train_img), np.array(y_train_img), np.array(x_test_img), np.array(y_test_img)
 
 
 def augment_data(image, mask, img_size):
@@ -130,6 +130,4 @@ def load_batch(x, y, index, batch_size, img_size, augment = False):
             masks.append(y[index+1])
     return np.array(imgs), np.array(masks)
 
-x_train, y_train, x_test, y_test = prep_dataset('D:/indian dr dataset')
 
-batch = prep_batch(x_train,y_train,8)
