@@ -122,12 +122,12 @@ def load_batch(x, y, index, batch_size, img_size, augment = False):
     imgs, masks = [],[]
     for i in range(batch_size):
         if augment:
-            new_data = augment_data(x[index+i], y[index+i], img_size)
+            new_data = augment_data(x[(index+i)%len(x)], y[(index+i)%len(y)], img_size)
             imgs.append(new_data[0])
             masks.append(new_data[1])
         else:
-            imgs.append(x[index+i])
-            masks.append(y[index+1])
+            imgs.append(x[(index+i)%len(x)])
+            masks.append(y[(index+i)%len(y)])
     return np.array(imgs), np.array(masks)
 
 
