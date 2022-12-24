@@ -111,6 +111,7 @@ class Trainer:
                         f'Epoch={epoch}, Train_Loss={train_loss_metric.result()}, Train_IoU={train_iou_metric.result()}')
                 print(
                     f"epoch {epoch + 1}: train loss {train_loss_metric.result():.5f}. train iou {train_iou_metric.result():.5f}")
+                trainIoU = train_iou_metric.result()
                 train_loss_metric.reset_states()
                 train_iou_metric.reset_states()
 
@@ -126,15 +127,17 @@ class Trainer:
                             f'Epoch={epoch}, Test_Loss={test_loss_metric.result()}')
                     print(
                         f"epoch {epoch + 1}: test loss {test_loss_metric.result():.5f}. test iou {test_iou_metric.result():.5f}")
+                    testIoU = test_iou_metric.result()
                     test_loss_metric.reset_states()
                     test_iou_metric.reset_states()
 
                     vis_batch = load_batch(self.test_dataset[0], self.test_dataset[1], 0, 10, self.config.img_size, augment=False)
-                    for i in range(10):
-                        logits = self.model(np.expand_dims(vis_batch[0][i],0))
-                        vis = visualise_mask(tf.squeeze(logits), vis_batch[0][i])
-                        vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
-                        cv2.imwrite(f'{self.img_dir}epoch_{epoch}_img{i}')
-
-                    self.model.save_weights(f'{self.model_dir}epoch_{epoch}_trainIoU_{train_iou_metric.result()}_testIoU_{test_iou_metric.result}.h5')
+                    if epoch % 15 == 0:
+                        for i in range(10):
+                            logits = self.model(np.expand_dims(vis_batch[0][i],0))
+                            vis = visualise_mask(tf.squeeze(logits), vis_batch[0][i])
+                            vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
+                            cv2.imwrite(f'{self.img_dir}epoch_{epoch}_img{i}.jpg', vis)
+                    print(testIoU, trainIoU)
+                    self.model.save_weights(f'{self.model_dir}epoch_{epoch}_trainIoU_{trainIoU:.3f}_testIoU_{testIoU:.3f}.h5')
 
