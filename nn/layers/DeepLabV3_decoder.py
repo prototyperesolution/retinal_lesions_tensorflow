@@ -8,7 +8,7 @@ class DeepLabV3_Decoder(tf.keras.layers.Layer):
         if batchnorm:
             self.batchnorm = tf.keras.layers.BatchNormalization()
         self.conv1 = tf.keras.layers.Conv2D(filters, 1, (1, 1))
-        self.conv2 = tf.keras.layers.Conv2D(n_classes, 3, (1, 1), "SAME")
+        self.conv2 = tf.keras.layers.Conv2D(n_classes, 3, (1, 1), "SAME", activation='softmax')
         self.out_size = out_size
 
     def call(self, x1, x2):

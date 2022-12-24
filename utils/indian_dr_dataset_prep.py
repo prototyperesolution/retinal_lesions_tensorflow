@@ -145,4 +145,3 @@ def visualise_mask(mask, image):
         for j in range(len(mask_one_hot[j])):
             new_mask[i,j,:] = colours[mask_one_hot[i,j]]
     return new_mask
-

@@ -38,7 +38,7 @@ class Trainer:
         with self.strategy.scope():
             self.model = model(**model_config)
             self.optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate)
-            self.cce = tf.keras.losses.CategoricalCrossentropy(from_logits=True,
+            self.cce = tf.keras.losses.CategoricalCrossentropy(from_logits=False,
                                                                reduction=tf.keras.losses.Reduction.NONE)
 
     def train(self):
@@ -89,7 +89,7 @@ class Trainer:
         epoch_bar = master_bar(range(self.config.max_epochs))
         with self.strategy.scope():
             for epoch in epoch_bar:
-                for i in progress_bar(range(0,(len(self.train_dataset[0])*10), self.config.batch_size), total=len(self.train_dataset[0])*10//self.config.batch_size, parent=epoch_bar):
+                for i in progress_bar(range(0,(len(self.train_dataset[0])*200), self.config.batch_size), total=len(self.train_dataset[0])*200//self.config.batch_size, parent=epoch_bar):
                     inputs = load_batch(self.train_dataset[0], self.train_dataset[1], i%(len(self.train_dataset[0])), self.config.batch_size,self.config.img_size,augment=True)
                     loss = train_step(inputs)
                     self.tokens += tf.reduce_sum(tf.cast(inputs[1] >= 0, tf.int32)).numpy()
