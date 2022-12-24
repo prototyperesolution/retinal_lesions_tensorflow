@@ -15,8 +15,9 @@ train_dataset = (train_x,train_y)
 test_dataset = (test_x,test_y)
 
 
-
-tconf = TrainerConfig(max_epochs=100, batch_size=32, learning_rate=1e-4, batches_per_epoch=10, img_size = IMG_SIZE)
+print('this version')
+tconf = TrainerConfig(max_epochs=100, batch_size=32, learning_rate=1e-4, img_size = IMG_SIZE,
+                      num_passes= 10, save_dir = 'D:/phd stuff/retinal_lesions_tensorflow/results_and_checkpoints/')
 mconf = {'input_shape':(IMG_SIZE[0],IMG_SIZE[1],3), 'n_classes':np.shape(test_y)[-1]}
 
 trainer = Trainer(KSAC_network, mconf, train_dataset, test_dataset, tconf)

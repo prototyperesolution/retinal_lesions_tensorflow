@@ -78,6 +78,10 @@ def load_dataset(path_to_dataset, img_size):
         for mask in y_train_fn[index]:
             ID = mask[-6:-4]
             masks[:,:,classes.index(ID)] = cv2.resize(cv2.cvtColor(cv2.imread(mask),cv2.COLOR_BGR2RGB),img_size)[:,:,0]/255
+        total_mask = np.sum(masks, axis=-1)
+        background_mask = np.expand_dims((total_mask == 0).astype(np.float32), -1)
+        # print('background mask shape',background_mask.shape)
+        masks = np.concatenate((masks, background_mask), axis=-1)
         y_train_img.append(masks)
 
     """creating test dataset"""
@@ -89,6 +93,11 @@ def load_dataset(path_to_dataset, img_size):
             ID = mask[-6:-4]
             masks[:, :, classes.index(ID)] = cv2.resize(cv2.cvtColor(cv2.imread(mask), cv2.COLOR_BGR2RGB), img_size)[:,
                                              :, 0] / 255
+        total_mask = np.sum(masks, axis=-1)
+        '''adding background mask'''
+        background_mask = np.expand_dims((total_mask == 0).astype(np.float32),-1)
+        #print('background mask shape',background_mask.shape)
+        masks = np.concatenate((masks, background_mask), axis=-1)
         y_test_img.append(masks)
 
     return np.array(x_train_img), np.array(y_train_img), np.array(x_test_img), np.array(y_test_img)
@@ -132,17 +141,23 @@ def load_batch(x, y, index, batch_size, img_size, augment = False):
 
 def visualise_mask(mask, image):
     '''visualises a mask in the dr dataset format into an RGB mask which is then overlayed on the image'''
+    '''background is the last layer of mask so that will be 0,0,0'''
     colours = [
         [0,0,170],
         [0,0,255],
         [0,85,255],
         [0,170,255],
-        [0,255,255]
+        [0,255,255],
+        [0,0,0]
     ]
     mask_one_hot = np.argmax(mask, axis=-1)
+
     new_mask = np.zeros((np.shape(mask)[0],np.shape(mask)[1],3))
     for i in range(len(mask_one_hot)):
-        for j in range(len(mask_one_hot[j])):
+        for j in range(len(mask_one_hot[i])):
             new_mask[i,j,:] = colours[mask_one_hot[i,j]]
-    return new_mask
-    '''test'''
+    new_mask = new_mask.astype(np.uint8)
+    binary_mask = (new_mask != (0, 0, 0))
+    final = np.where(binary_mask, new_mask, (image*255).astype(np.uint8))
+    return final
+

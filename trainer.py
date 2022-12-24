@@ -6,9 +6,10 @@ from utils.indian_dr_dataset_prep import prep_batch, load_batch, visualise_mask
 from utils.losses import focal_loss
 import random
 import math
-import tqdm
+from tqdm import tqdm
 import cv2
-
+from datetime import date
+import os
 
 class TrainerConfig:
     # optimization parameters
@@ -17,6 +18,8 @@ class TrainerConfig:
     learning_rate = 1e-3
     img_size = (256,256)
     ckpt_path = None
+    num_passes = 200 #number of times per epoch that the dataset is cycled through
+    save_dir = None
 
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -34,6 +37,15 @@ class Trainer:
         self.config = config
         self.tokens = 0
         self.strategy = tf.distribute.OneDeviceStrategy("GPU:0")
+        self.savedir = self.config.save_dir + str(date.today())
+        self.model_dir = self.savedir + '/models/'
+        self.img_dir = self.savedir + '/image results/'
+        if os.path.isdir(self.savedir) == False:
+            os.mkdir(self.savedir)
+        if os.path.isdir(self.model_dir) == False:
+            os.mkdir(self.model_dir)
+        if os.path.isdir(self.img_dir) == False:
+            os.mkdir(self.img_dir)
 
         with self.strategy.scope():
             self.model = model(**model_config)
@@ -45,8 +57,8 @@ class Trainer:
 
         train_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
         test_loss_metric = tf.keras.metrics.Mean('testing_loss', dtype=tf.float32)
-        train_iou_metric = tf.keras.metrics.MeanIoU(num_classes=5)#, sparse_y_true=False, sparse_y_pred=False)
-        test_iou_metric = tf.keras.metrics.MeanIoU(num_classes=5)# sparse_y_true=False, sparse_y_pred=False)
+        train_iou_metric = tf.keras.metrics.MeanIoU(num_classes=6)#, sparse_y_true=False, sparse_y_pred=False)
+        test_iou_metric = tf.keras.metrics.MeanIoU(num_classes=6)# sparse_y_true=False, sparse_y_pred=False)
 
 
         def train_step(inputs):
@@ -54,10 +66,8 @@ class Trainer:
             def step_fn(inputs):
                 X, Y = inputs
 
-                # print(X.shape)
                 with tf.GradientTape() as tape:
                     logits = self.model(X, training=True)
-                    #print('logits shape', logits.shape)
                     l1_loss = self.cce(Y, logits)
 
                     train_iou_metric.update_state(tf.argmax(Y, axis=-1), tf.argmax(logits, axis=-1))
@@ -86,35 +96,45 @@ class Trainer:
             mean_loss = sum_loss / self.config.batch_size
             return mean_loss
 
-        epoch_bar = master_bar(range(self.config.max_epochs))
+        #epoch_bar = master_bar(range(self.config.max_epochs))
         with self.strategy.scope():
-            for epoch in epoch_bar:
-                for i in progress_bar(range(0,(len(self.train_dataset[0])*200), self.config.batch_size), total=len(self.train_dataset[0])*200//self.config.batch_size, parent=epoch_bar):
+            for epoch in range(self.config.max_epochs):
+                pbar = tqdm(range(0,(len(self.train_dataset[0])*self.config.num_passes), self.config.batch_size))
+                for i in pbar:
+                #for i in progress_bar(range(0,(len(self.train_dataset[0])*200), self.config.batch_size), total=len(self.train_dataset[0])*200//self.config.batch_size, parent=epoch_bar):
                     inputs = load_batch(self.train_dataset[0], self.train_dataset[1], i%(len(self.train_dataset[0])), self.config.batch_size,self.config.img_size,augment=True)
                     loss = train_step(inputs)
                     self.tokens += tf.reduce_sum(tf.cast(inputs[1] >= 0, tf.int32)).numpy()
                     train_loss_metric(loss)
-                    epoch_bar.child.comment = f'training loss : {train_loss_metric.result()} training iou : {train_iou_metric.result()}'
+                    #epoch_bar.child.comment = f'training loss : {train_loss_metric.result()} training iou : {train_iou_metric.result()}'
+                    pbar.set_description(
+                        f'Epoch={epoch}, Train_Loss={train_loss_metric.result()}, Train_IoU={train_iou_metric.result()}')
                 print(
                     f"epoch {epoch + 1}: train loss {train_loss_metric.result():.5f}. train iou {train_iou_metric.result():.5f}")
                 train_loss_metric.reset_states()
                 train_iou_metric.reset_states()
 
                 if self.test_dataset:
-                    for i in progress_bar(range(0, len(self.test_dataset[0]), self.config.batch_size), total=len(self.test_dataset[0])//self.config.batch_size, parent=epoch_bar):
+                    pbar = tqdm(range(0, (len(self.test_dataset[0])), self.config.batch_size))
+                    for i in pbar:
+                    #for i in progress_bar(range(0, len(self.test_dataset[0]), self.config.batch_size), total=len(self.test_dataset[0])//self.config.batch_size, parent=epoch_bar):
                         inputs = load_batch(self.test_dataset[0], self.test_dataset[1], i%len(self.test_dataset[0]), self.config.batch_size,self.config.img_size,augment=False)
                         loss = test_step(inputs)
                         test_loss_metric(loss)
-                        epoch_bar.child.comment = f'testing loss : {test_loss_metric.result()}'
+                        #epoch_bar.child.comment = f'testing loss : {test_loss_metric.result()}'
+                        pbar.set_description(
+                            f'Epoch={epoch}, Test_Loss={test_loss_metric.result()}')
                     print(
                         f"epoch {epoch + 1}: test loss {test_loss_metric.result():.5f}. test iou {test_iou_metric.result():.5f}")
                     test_loss_metric.reset_states()
                     test_iou_metric.reset_states()
-                    '''
-                    vis_batch = load_batch(self.test_dataset[x], self.test_dataset[y], 0, 1, self.config.img_size, augment=False)
-                    logits = self.model(np.expand_dims(vis_batch[0][0],0))
-                    vis = visualise_mask(logits, np.zeros((256,256,3)))
-                    cv2.imshow('test',vis)
-                    cv2.waitKey(0)
-                    cv2.destroyAllWindows()
-                    '''
+
+                    vis_batch = load_batch(self.test_dataset[0], self.test_dataset[1], 0, 10, self.config.img_size, augment=False)
+                    for i in range(10):
+                        logits = self.model(np.expand_dims(vis_batch[0][i],0))
+                        vis = visualise_mask(tf.squeeze(logits), vis_batch[0][i])
+                        vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
+                        cv2.imwrite(f'{self.img_dir}epoch_{epoch}_img{i}')
+
+                    self.model.save_weights(f'{self.model_dir}epoch_{epoch}_trainIoU_{train_iou_metric.result()}_testIoU_{test_iou_metric.result}.h5')
+
