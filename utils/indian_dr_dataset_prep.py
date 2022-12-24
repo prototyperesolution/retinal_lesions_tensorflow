@@ -113,7 +113,7 @@ def augment_data(image, mask, img_size):
         x1, x2 = np.random.randint(0, image_dim), np.random.randint(0, image_dim)
         left = np.min([x1, x2])
         right = np.max([x1, x2])
-        if right - left >= img_size[0]:
+        if right - left >= img_size[0]//4:
             image = image[left:right, left:right]
             mask = mask[left:right, left:right]
 

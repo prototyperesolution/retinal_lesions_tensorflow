@@ -138,6 +138,8 @@ class Trainer:
                             vis = visualise_mask(tf.squeeze(logits), vis_batch[0][i])
                             vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
                             cv2.imwrite(f'{self.img_dir}epoch_{epoch}_img{i}.jpg', vis)
-                    print(testIoU, trainIoU)
-                    self.model.save_weights(f'{self.model_dir}epoch_{epoch}_trainIoU_{trainIoU:.3f}_testIoU_{testIoU:.3f}.h5')
+                            vis = visualise_mask(tf.squeeze(logits), np.zeros(np.shape(vis)))
+                            vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
+                            cv2.imwrite(f'{self.img_dir}epoch_{epoch}_img_jm{i}.jpg', vis)
+                        self.model.save_weights(f'{self.model_dir}epoch_{epoch}_trainIoU_{trainIoU:.3f}_testIoU_{testIoU:.3f}.h5')
 
