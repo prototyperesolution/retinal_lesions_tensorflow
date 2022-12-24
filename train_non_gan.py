@@ -5,6 +5,7 @@ import tensorflow as tf
 import numpy as np
 
 print('ver',tf.__version__)
+print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 IMG_SIZE = (256,256)
 
@@ -15,7 +16,7 @@ test_dataset = (test_x,test_y)
 
 
 
-tconf = TrainerConfig(max_epochs=100, batch_size=8, learning_rate=1e-4, batches_per_epoch=200, img_size = IMG_SIZE)
+tconf = TrainerConfig(max_epochs=100, batch_size=32, learning_rate=1e-4, batches_per_epoch=200, img_size = IMG_SIZE)
 mconf = {'input_shape':(IMG_SIZE[0],IMG_SIZE[1],3), 'n_classes':np.shape(test_y)[-1]}
 
 trainer = Trainer(KSAC_network, mconf, train_dataset, test_dataset, tconf)
