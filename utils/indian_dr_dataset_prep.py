@@ -130,4 +130,19 @@ def load_batch(x, y, index, batch_size, img_size, augment = False):
             masks.append(y[(index+i)%len(y)])
     return np.array(imgs), np.array(masks)
 
+def visualise_mask(mask, image):
+    '''visualises a mask in the dr dataset format into an RGB mask which is then overlayed on the image'''
+    colours = [
+        [0,0,170],
+        [0,0,255],
+        [0,85,255],
+        [0,170,255],
+        [0,255,255]
+    ]
+    mask_one_hot = np.argmax(mask, axis=-1)
+    new_mask = np.zeros((np.shape(mask)[0],np.shape(mask)[1],3))
+    for i in range(len(mask_one_hot)):
+        for j in range(len(mask_one_hot[j])):
+            new_mask[i,j,:] = colours[mask_one_hot[i,j]]
+    return new_mask
 

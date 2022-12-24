@@ -2,7 +2,7 @@ import cv2
 import tensorflow as tf
 import numpy as np
 from fastprogress import master_bar, progress_bar
-from utils.indian_dr_dataset_prep import prep_batch, load_batch
+from utils.indian_dr_dataset_prep import prep_batch, load_batch, visualise_mask
 from utils.losses import focal_loss
 import random
 import math
@@ -110,3 +110,11 @@ class Trainer:
                         f"epoch {epoch + 1}: test loss {test_loss_metric.result():.5f}. test iou {test_iou_metric.result():.5f}")
                     test_loss_metric.reset_states()
                     test_iou_metric.reset_states()
+                    '''
+                    vis_batch = load_batch(self.test_dataset[x], self.test_dataset[y], 0, 1, self.config.img_size, augment=False)
+                    logits = self.model(np.expand_dims(vis_batch[0][0],0))
+                    vis = visualise_mask(logits, np.zeros((256,256,3)))
+                    cv2.imshow('test',vis)
+                    cv2.waitKey(0)
+                    cv2.destroyAllWindows()
+                    '''
