@@ -158,6 +158,8 @@ def visualise_mask(mask, image):
             new_mask[i,j,:] = colours[mask_one_hot[i,j]]
     new_mask = new_mask.astype(np.uint8)
     binary_mask = (new_mask != (0, 0, 0))
-    final = np.where(binary_mask, new_mask, (image*255).astype(np.uint8))
+    image = (image*255).astype(np.uint8)
+    image = np.where(binary_mask, np.zeros((np.shape(image))).astype(np.uint8), image).astype(np.uint8)
+    final = np.where(binary_mask, new_mask, image).astype(np.uint8)
     return final
 

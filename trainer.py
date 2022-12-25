@@ -37,7 +37,7 @@ class Trainer:
         self.config = config
         self.tokens = 0
         self.strategy = tf.distribute.OneDeviceStrategy("GPU:0")
-        self.savedir = self.config.save_dir + str(date.today())
+        self.savedir = self.config.save_dir + str(date.today()) +'_'+ str(self.config.batch_size) +'_'+ str(self.config.img_size[0])
         self.model_dir = self.savedir + '/models/'
         self.img_dir = self.savedir + '/image results/'
         if os.path.isdir(self.savedir) == False:
