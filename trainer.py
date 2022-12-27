@@ -53,6 +53,11 @@ class Trainer:
             self.cce = tf.keras.losses.CategoricalCrossentropy(from_logits=False,
                                                                reduction=tf.keras.losses.Reduction.NONE)
 
+            if self.config.ckpt_path:
+                _ = self.model(np.zeros((0,self.config.img_size[0],self.config.img_size[1],3)))
+                self.model.load_weights(self.config.ckpt_path)
+                print('loaded weights')
+
     def train(self):
 
         train_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
