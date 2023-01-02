@@ -21,7 +21,7 @@ def build_depthwise_block(input_shape, n_filters, kernel_size=[3, 3]):
     """
     # Skip pointwise by setting num_outputs=None
     input_tensor = tf.keras.layers.Input(shape=input_shape)
-    net = tf.keras.layers.SeparableConv2D(filters = input_shape[-1], depth_multiplier=1, kernel_size=[3,3], padding='same')(input_tensor)
+    net = tf.keras.layers.Conv2D(filters = input_shape[-1], kernel_size=[3,3], padding='same')(input_tensor)
 
     net = tf.keras.layers.BatchNormalization()(net)
     net = tf.keras.layers.LeakyReLU()(net)

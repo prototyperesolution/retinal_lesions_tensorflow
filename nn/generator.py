@@ -10,7 +10,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.initializers import RandomNormal
 from tensorflow.keras.layers import Conv2D
-from railsem_class_info import rail_classes
+
 
 
 class Generator(tf.keras.Model):
@@ -84,7 +84,7 @@ class Generator(tf.keras.Model):
     def build_output_block(self, input_shape, res):
         init = RandomNormal(stddev=0.02)
         input_tensor = tf.keras.layers.Input(shape=(input_shape), name=f"out_{res}")
-        o = Conv2D(self.n_classes, (3, 3), (1, 1), padding='same', kernel_initializer=init)(input_tensor)
+        o = Conv2D(self.n_classes, (3, 3), (1, 1), padding='same', kernel_initializer=init, activation='softmax')(input_tensor)
         # o = tf.keras.layers.Activation('sigmoid')(o)
         # o = tf.keras.layers.Softmax(axis=-1) (o)
         return keras.Model(input_tensor, o, name=f"out_{res}")

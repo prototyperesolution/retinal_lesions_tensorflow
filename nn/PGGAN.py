@@ -29,8 +29,7 @@ class Prog_Seg_GAN(tf.keras.Model):
 
         print(f"\nModel resolution:{res}x{res * 2}")
 
-    def compile(self, steps_per_epoch, res, d_optimizer, g_optimizer, *args, **kwargs):
-        self.steps_per_epoch = steps_per_epoch
+    def compile(self, res, d_optimizer, g_optimizer, *args, **kwargs):
         if res != self.current_res:
             self.grow_model(res)
 
