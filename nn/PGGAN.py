@@ -29,19 +29,6 @@ class Prog_Seg_GAN(tf.keras.Model):
 
         print(f"\nModel resolution:{res}x{res * 2}")
 
-    def compile(self, res, d_optimizer, g_optimizer, *args, **kwargs):
-        if res != self.current_res:
-            self.grow_model(res)
-
-        self.d_optimizer = d_optimizer
-        self.g_optimizer = g_optimizer
-        self.d_loss_metric = keras.metrics.Mean(name="d_loss")
-        self.d_real_loss_metric = keras.metrics.Mean(name='d_real_loss')
-        self.d_gen_loss_metric = keras.metrics.Mean(name='d_gen_loss')
-        self.g_loss_metric = keras.metrics.Mean(name="g_loss")
-        self.l1_loss_metric = keras.metrics.Mean(name="g_l1_loss")
-        self.gen_gan_loss_metric = keras.metrics.Mean(name="g_gan_loss")
-        super(Prog_Seg_GAN, self).compile(*args, **kwargs)
 
     def generator_loss(self, disc_generated_output, gen_output, target):
         gan_loss = self.loss_object(tf.ones_like(disc_generated_output), disc_generated_output)
@@ -51,9 +38,6 @@ class Prog_Seg_GAN(tf.keras.Model):
         total_gen_loss = gan_loss + (LAMBDA * l1_loss)
         return total_gen_loss, gan_loss, l1_loss
 
-    def one_hot_encode(self, mask):
-        maxes = tf.math.argmax(mask, axis=-1)
-        return (tf.one_hot(maxes, np.shape(mask)[-1]))
 
     def discriminator_loss(self, disc_real_output, disc_generated_output):
         real_loss = self.loss_object(tf.ones_like(disc_real_output), disc_real_output)
@@ -63,49 +47,3 @@ class Prog_Seg_GAN(tf.keras.Model):
         total_disc_loss = real_loss + generated_loss
 
         return total_disc_loss, real_loss, generated_loss
-
-    def train_step(self, inputs):
-        # inputs contains images and masks
-        # input_image_target res is input to generator, input_image_current_res is input to disc
-        input_image_target_res, target = inputs
-        input_image_current_res = tf.image.resize(
-            input_image_target_res, (self.current_res, self.current_res * 2),
-            method=tf.image.ResizeMethod.NEAREST_NEIGHBOR
-        )
-
-        with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            gen_output = self.gen_model(input_image_target_res, training=True)
-
-            gen_output_one_hot = self.one_hot_encode(gen_output)
-
-            disc_real_output = self.dis_model([input_image_current_res, target], training=True)
-            disc_generated_output = self.dis_model([input_image_current_res, gen_output_one_hot], training=True)
-
-            gen_total_loss, gen_gan_loss, gen_l1_loss = self.generator_loss(disc_generated_output, gen_output, target)
-            disc_loss, disc_r_loss, disc_g_loss = self.discriminator_loss(disc_real_output, disc_generated_output)
-
-        generator_gradients = gen_tape.gradient(gen_total_loss,
-                                                self.gen_model.trainable_variables)
-        discriminator_gradients = disc_tape.gradient(disc_loss,
-                                                     self.dis_model.trainable_variables)
-
-        self.g_optimizer.apply_gradients(zip(generator_gradients,
-                                             self.gen_model.trainable_variables))
-        self.d_optimizer.apply_gradients(zip(discriminator_gradients,
-                                             self.dis_model.trainable_variables))
-
-        self.d_loss_metric.update_state(disc_loss)
-        self.g_loss_metric.update_state(gen_total_loss)
-        self.l1_loss_metric.update_state(gen_l1_loss)
-        self.d_real_loss_metric.update_state(disc_r_loss)
-        self.d_gen_loss_metric.update_state(disc_g_loss)
-        self.gen_gan_loss_metric.update_state(gen_gan_loss)
-
-        return {
-            'G_total_loss': self.g_loss_metric.result(),
-            'G_l1_loss': self.l1_loss_metric.result(),
-            'G_gan_loss': self.gen_gan_loss_metric.result(),
-            'D_loss': self.d_loss_metric.result(),
-            'D_real_loss': self.d_real_loss_metric.result(),
-            'D_gen_loss': self.d_gen_loss_metric.result()
-        }
