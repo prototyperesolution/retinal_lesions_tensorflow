@@ -3,6 +3,10 @@ from nn import PGGAN
 import numpy as np
 import os
 from datetime import date
+from tqdm import tqdm
+from utils.indian_dr_dataset_prep import prep_batch, load_batch, visualise_mask
+import cv2
+
 
 def log2(num):
     return int(np.log2(num))
@@ -14,6 +18,8 @@ class GanTrainerConfig:
     batch_size = 64
     learning_rate = 1e-3
     start_res = (64,64)
+    #we have a current_res thing in case we are resuming training at a specific resolution
+    current_res = (64,64)
     target_res = (256,256)
     gen_ckpt_path = None
     dis_ckpt_path = None
@@ -145,3 +151,59 @@ class GanTrainer:
             sum_loss = self.strategy.reduce(tf.distribute.ReduceOp.SUM, per_example_losses, axis=0)
             mean_loss = sum_loss / self.config.batch_size
             return mean_loss
+
+        with self.strategy.scope():
+            for current_res_log2 in range(log2(self.config.current_res), log2(self.config.target_res)+1):
+                if self.model.current_res != 2**current_res_log2:
+                    self.model.grow_model(2**current_res_log2)
+                for epoch in range(self.config.max_epochs):
+                    pbar = tqdm(range(0, (len(self.train_dataset[0]) * self.config.num_passes), self.config.batch_size))
+                    for i in pbar:
+                        # for i in progress_bar(range(0,(len(self.train_dataset[0])*200), self.config.batch_size), total=len(self.train_dataset[0])*200//self.config.batch_size, parent=epoch_bar):
+                        inputs = load_batch(self.train_dataset[0], self.train_dataset[1],
+                                            i % (len(self.train_dataset[0])), self.config.batch_size,
+                                            self.config.img_size, augment=True)
+                        loss = train_step(inputs)
+                        self.tokens += tf.reduce_sum(tf.cast(inputs[1] >= 0, tf.int32)).numpy()
+                        # epoch_bar.child.comment = f'training loss : {train_loss_metric.result()} training iou : {train_iou_metric.result()}'
+                        pbar.set_description(
+                            f'Resolution={2**current_res_log2}, Epoch={epoch}, Gen_Loss={gen_loss_metric.result()}, '
+                            f'Dis_Loss={dis_loss_metric.result()}, Train_IoU={train_iou_metric.result()}')
+                    print(
+                        f"resolution {2**current_res_log2} epoch {epoch + 1}: gen loss {gen_loss_metric.result():.5f}. dis loss {dis_loss_metric.result():.5f}. train iou {train_iou_metric.result():.5f}")
+                    trainIoU = train_iou_metric.result()
+                    gen_loss_metric.reset_states()
+                    dis_loss_metric.reset_states()
+                    train_iou_metric.reset_states()
+
+                    if self.test_dataset:
+                        pbar = tqdm(range(0, (len(self.test_dataset[0])), self.config.batch_size))
+                        for i in pbar:
+                            # for i in progress_bar(range(0, len(self.test_dataset[0]), self.config.batch_size), total=len(self.test_dataset[0])//self.config.batch_size, parent=epoch_bar):
+                            inputs = load_batch(self.test_dataset[0], self.test_dataset[1],
+                                                i % len(self.test_dataset[0]), self.config.batch_size,
+                                                self.config.img_size, augment=False)
+                            loss = test_step(inputs)
+                            # epoch_bar.child.comment = f'testing loss : {test_loss_metric.result()}'
+                            pbar.set_description(
+                                f'Epoch={epoch}, Test_Loss={test_iou_metric.result()}')
+                        print(
+                            f"resolution {2**current_res_log2} epoch {epoch + 1}: test iou {test_iou_metric.result():.5f}")
+                        testIoU = test_iou_metric.result()
+                        test_iou_metric.reset_states()
+
+                        vis_batch = load_batch(self.test_dataset[0], self.test_dataset[1], 0, 10, self.config.img_size,
+                                               augment=False)
+                        if epoch % 15 == 0:
+                            for i in range(10):
+                                logits = self.model(np.expand_dims(vis_batch[0][i], 0))
+                                vis = visualise_mask(tf.squeeze(logits), vis_batch[0][i])
+                                vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
+                                cv2.imwrite(f'{self.img_dir}resolution_{2**current_res_log2}epoch_{epoch}_img{i}.jpg', vis)
+                                vis = visualise_mask(tf.squeeze(logits), np.zeros(np.shape(vis)))
+                                vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
+                                cv2.imwrite(f'{self.img_dir}epoch_{epoch}_img_jm{i}.jpg', vis)
+                            self.model.dis_model.save_weights(
+                                f'{self.model_dir}dis_resolution{2**current_res_log2}epoch_{epoch}_trainIoU_{trainIoU:.3f}_testIoU_{testIoU:.3f}.h5')
+                            self.model.gen_model.save_weights(
+                                f'{self.model_dir}gen_resolution{2 ** current_res_log2}epoch_{epoch}_trainIoU_{trainIoU:.3f}_testIoU_{testIoU:.3f}.h5')
