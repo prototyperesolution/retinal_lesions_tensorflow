@@ -40,9 +40,15 @@ class Discriminator:
 
         for i in range(self.start_res_log, self.target_res_log + 1):
             discriminator_input_shape = (2 ** i, (2 ** i), self.filter_nums[i])
-            self.discriminator_blocks.append(self.build_discriminator_block(discriminator_input_shape,
-                                                                            self.filter_nums[i - 1],
-                                                                            2 ** i))
+            if i == self.start_res_log:
+                self.discriminator_blocks.append(self.build_discriminator_block(input_shape = discriminator_input_shape,
+                                                                            n_channels = self.filter_nums[i],
+                                                                            res = 2 ** i,
+                                                                            stride = 1))
+            else:
+                self.discriminator_blocks.append(self.build_discriminator_block(input_shape=discriminator_input_shape,
+                                                                                n_channels=self.filter_nums[i - 1],
+                                                                                res=2 ** i))
             self.input_blocks.append(self.build_input_block(self.filter_nums[i], 2 ** i))
 
     # the from_input block will take two inputs, those being the image input and the class input (mask)
@@ -81,6 +87,6 @@ class Discriminator:
             x = self.discriminator_blocks[i](x)
         # final layer of disc
         x = Conv2D(1, (3, 3), (1, 1), padding='same', kernel_initializer=init)(x)
-        # x = tf.keras.layers.Activation('sigmoid')(x)
+        x = tf.keras.layers.Activation('sigmoid')(x)
         return keras.Model([input_image_tensor, input_mask_tensor], x)
 

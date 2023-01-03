@@ -22,6 +22,7 @@ test_dataset = (test_x,test_y)
 print('this version')
 tconf = GanTrainerConfig(max_epochs=20, batch_size=8, learning_rate=1e-4, start_res = start_res, target_res = target_res, current_res = current_res,
                       num_passes= 100, save_dir = 'E:/phd stuff/retinal_lesions_tensorflow/results_and_checkpoints/PGGAN')
+print('apparent n classes ',np.shape(test_y)[-1])
 mconf = {'start_res':start_res[0], 'target_res':target_res[0],'n_classes':np.shape(test_y)[-1]}
 
 trainer = GanTrainer(Prog_Seg_GAN, mconf, train_dataset, test_dataset, tconf)

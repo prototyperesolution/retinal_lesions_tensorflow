@@ -24,7 +24,7 @@ class GanTrainerConfig:
     dis_ckpt_path = None
     num_passes = 200 #number of times per epoch that the dataset is cycled through
     save_dir = None
-    n_classes = 3
+    n_classes = 6
     LAMBDA = 100
 
     def __init__(self, **kwargs):
@@ -57,7 +57,7 @@ class GanTrainer:
             self.d_optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate)
             self.cce = tf.keras.losses.CategoricalCrossentropy(from_logits=False,
                                                                reduction=tf.keras.losses.Reduction.NONE)
-            self.loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True,
+            self.loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=False,
                                                                   reduction=tf.keras.losses.Reduction.NONE)
 
             if self.config.gen_ckpt_path:
@@ -69,13 +69,7 @@ class GanTrainer:
 
     def generator_loss(self, disc_generated_output, gen_output, target):
         gan_loss = self.loss_object(tf.ones_like(disc_generated_output), disc_generated_output)
-        gan_loss = tf.image.resize(gan_loss, [target.shape[1],target.shape[2]])
         l1_loss = self.cce(target, gen_output)
-        print('disc gen output shape ',disc_generated_output.shape)
-        print('gen output shape ',gen_output.shape)
-        print('target shape ',target.shape)
-        print('gan loss shape ',gan_loss.shape)
-        print('l1 loss shape ',l1_loss.shape)
 
         total_gen_loss = gan_loss + (self.config.LAMBDA * l1_loss)
         return total_gen_loss
@@ -126,9 +120,9 @@ class GanTrainer:
                                                              self.model.dis_model.trainable_variables)
 
                 self.g_optimizer.apply_gradients(zip(generator_gradients,
-                                                     self.gen_model.trainable_variables))
+                                                     self.model.gen_model.trainable_variables))
                 self.d_optimizer.apply_gradients(zip(discriminator_gradients,
-                                                     self.dis_model.trainable_variables))
+                                                     self.model.dis_model.trainable_variables))
 
                 return gen_loss+dis_loss
 
