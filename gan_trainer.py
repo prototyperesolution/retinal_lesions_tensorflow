@@ -6,10 +6,9 @@ from datetime import date
 from tqdm import tqdm
 from utils.indian_dr_dataset_prep import prep_batch, load_batch, visualise_mask
 import cv2
+from utils.utils import log2
 
 
-def log2(num):
-    return int(np.log2(num))
 
 class GanTrainerConfig:
     # optimization parameters
@@ -42,7 +41,7 @@ class GanTrainer:
         self.tokens = 0
         self.strategy = tf.distribute.OneDeviceStrategy("GPU:0")
         self.savedir = self.config.save_dir + str(date.today()) + '_' + str(self.config.batch_size) + '_' + str(
-            self.config.img_size[0])
+            self.config.target_res[0])
         self.model_dir = self.savedir + '/models/'
         self.img_dir = self.savedir + '/image results/'
         if os.path.isdir(self.savedir) == False:
@@ -61,7 +60,7 @@ class GanTrainer:
             self.loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True,
                                                                   reduction=tf.keras.losses.Reduction.NONE)
 
-            if self.config.ckpt_path:
+            if self.config.gen_ckpt_path:
                 _ = self.model.gen_model(np.zeros((0,self.config.img_size[0],self.config.img_size[1],3)))
                 _ = self.model.dis_model(np.zeros((0, self.config.img_size[0], self.config.img_size[1], self.config.n_classes)))
                 self.model.gen_model.load_weights(self.config.gen_ckpt_path)
@@ -70,8 +69,13 @@ class GanTrainer:
 
     def generator_loss(self, disc_generated_output, gen_output, target):
         gan_loss = self.loss_object(tf.ones_like(disc_generated_output), disc_generated_output)
-
-        l1_loss = self.cce(target, gen_output, axis=-1, name=None)
+        gan_loss = tf.image.resize(gan_loss, [target.shape[1],target.shape[2]])
+        l1_loss = self.cce(target, gen_output)
+        print('disc gen output shape ',disc_generated_output.shape)
+        print('gen output shape ',gen_output.shape)
+        print('target shape ',target.shape)
+        print('gan loss shape ',gan_loss.shape)
+        print('l1 loss shape ',l1_loss.shape)
 
         total_gen_loss = gan_loss + (self.config.LAMBDA * l1_loss)
         return total_gen_loss
@@ -92,15 +96,17 @@ class GanTrainer:
         train_iou_metric = tf.keras.metrics.MeanIoU(num_classes=self.config.n_classes)  # , sparse_y_true=False, sparse_y_pred=False)
         test_iou_metric = tf.keras.metrics.MeanIoU(num_classes=self.config.n_classes)  # sparse_y_true=False, sparse_y_pred=False)
 
-        curr_batch_size = (self.config.batch_size*(self.config.start_res[0]**2))/(self.model.current_res)
+        #curr_batch_size = int((self.config.batch_size*(self.config.start_res[0]**2))/(self.model.current_res**2))
+        curr_batch_size = 8
 
         def train_step(inputs):
 
             def step_fn(inputs):
                 #These will come in at maximum resolution
+                #print('aaaaaaaaaaa ',[curr_batch_size,self.model.current_res,self.model.current_res,3])
                 X, Y = inputs
-                Y = tf.image.resize(Y, (curr_batch_size,self.model.current_res,self.model.current_res,3))
-                X_current_res = tf.image.resize(X, (curr_batch_size,self.model.current_res,self.model.current_res,3))
+                Y = tf.image.resize(Y, [self.model.current_res,self.model.current_res])
+                X_current_res = tf.image.resize(X, [self.model.current_res,self.model.current_res])
 
                 with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
                     gen_output = self.model.gen_model(X, training=True)
@@ -135,8 +141,8 @@ class GanTrainer:
 
             def step_fn(inputs):
                 X, Y = inputs
-                Y = tf.image.resize(Y, (curr_batch_size, self.model.current_res, self.model.current_res, 3))
-                X_current_res = tf.image.resize(X, (curr_batch_size, self.model.current_res, self.model.current_res, 3))
+                Y = tf.image.resize(Y, [self.model.current_res, self.model.current_res])
+                X_current_res = tf.image.resize(X, [self.model.current_res, self.model.current_res])
                 """setting training to false to disable the dropout layers"""
                 gen_output = self.model.gen_model(X, training=False)
                 disc_real_output = self.model.dis_model([X_current_res, Y], training=False)
@@ -153,16 +159,19 @@ class GanTrainer:
             return mean_loss
 
         with self.strategy.scope():
-            for current_res_log2 in range(log2(self.config.current_res), log2(self.config.target_res)+1):
+            for current_res_log2 in range(log2(self.config.current_res[0]), log2(self.config.target_res[0])+1):
                 if self.model.current_res != 2**current_res_log2:
                     self.model.grow_model(2**current_res_log2)
+                #curr_batch_size = int(
+                #    (self.config.batch_size * (self.config.start_res[0] ** 2)) / (self.model.current_res**2))
+                curr_batch_size = 8
                 for epoch in range(self.config.max_epochs):
                     pbar = tqdm(range(0, (len(self.train_dataset[0]) * self.config.num_passes), self.config.batch_size))
                     for i in pbar:
                         # for i in progress_bar(range(0,(len(self.train_dataset[0])*200), self.config.batch_size), total=len(self.train_dataset[0])*200//self.config.batch_size, parent=epoch_bar):
                         inputs = load_batch(self.train_dataset[0], self.train_dataset[1],
-                                            i % (len(self.train_dataset[0])), self.config.batch_size,
-                                            self.config.img_size, augment=True)
+                                            i % (len(self.train_dataset[0])), curr_batch_size,
+                                            self.config.target_res, augment=True)
                         loss = train_step(inputs)
                         self.tokens += tf.reduce_sum(tf.cast(inputs[1] >= 0, tf.int32)).numpy()
                         # epoch_bar.child.comment = f'training loss : {train_loss_metric.result()} training iou : {train_iou_metric.result()}'
@@ -181,8 +190,8 @@ class GanTrainer:
                         for i in pbar:
                             # for i in progress_bar(range(0, len(self.test_dataset[0]), self.config.batch_size), total=len(self.test_dataset[0])//self.config.batch_size, parent=epoch_bar):
                             inputs = load_batch(self.test_dataset[0], self.test_dataset[1],
-                                                i % len(self.test_dataset[0]), self.config.batch_size,
-                                                self.config.img_size, augment=False)
+                                                i % len(self.test_dataset[0]), curr_batch_size,
+                                                self.config.target_res, augment=False)
                             loss = test_step(inputs)
                             # epoch_bar.child.comment = f'testing loss : {test_loss_metric.result()}'
                             pbar.set_description(
@@ -192,7 +201,7 @@ class GanTrainer:
                         testIoU = test_iou_metric.result()
                         test_iou_metric.reset_states()
 
-                        vis_batch = load_batch(self.test_dataset[0], self.test_dataset[1], 0, 10, self.config.img_size,
+                        vis_batch = load_batch(self.test_dataset[0], self.test_dataset[1], 0, 10, self.config.target_res,
                                                augment=False)
                         if epoch % 15 == 0:
                             for i in range(10):

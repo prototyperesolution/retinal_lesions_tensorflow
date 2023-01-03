@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 from nn.gan_layers import build_conv_block, build_depthwise_block, build_transpose_block
-from utils import log2
+from utils.utils import log2
 
 """all necessary imports"""
 
@@ -28,21 +28,21 @@ class Generator(tf.keras.Model):
         self.filter_nums = {
             0: 512,
             1: 512,
-            2: 512,  # 4x8
-            3: 512,  # 8x16
-            4: 512,  # 16x32
-            5: 512,  # 32x64
-            6: 256,  # 64x128
-            7: 128,  # 128x256
-            8: 64,  # 256x512
-            9: 32,  # 512x1024
-            10: 16,  # 1024x2048
+            2: 512,  # 4x4
+            3: 512,  # 8x8
+            4: 512,  # 16x16
+            5: 512,  # 32x32
+            6: 256,  # 64x64
+            7: 128,  # 128x128
+            8: 64,  # 256x256
+            9: 32,  # 512x512
+            10: 16,
         }
 
         self.input_block = self.build_input_block(self.filter_nums[self.target_res_log], 2 ** self.target_res_log)
 
         for i in range(0, self.encoder_depth):
-            encoder_input_shape = (2 ** (self.target_res_log - i), (2 ** (self.target_res_log - i)) * 2,
+            encoder_input_shape = (2 ** (self.target_res_log - i), (2 ** (self.target_res_log - i)),
                                    self.filter_nums[self.target_res_log - i])
             encoder_filter_nums = self.filter_nums[self.target_res_log - i - 1]
 
@@ -50,12 +50,12 @@ class Generator(tf.keras.Model):
                                                                 encoder_input_shape, 2 ** (self.target_res_log - i)))
 
         for i in range(0, self.encoder_depth):
-            decoder_input_shape = (2 ** (self.start_res_log + i), (2 ** (self.start_res_log + i)) * 2,
+            decoder_input_shape = (2 ** (self.start_res_log + i), (2 ** (self.start_res_log + i)),
                                    self.filter_nums[self.start_res_log + i])
 
             decoder_filter_nums = self.filter_nums[self.start_res_log + i + 1]
 
-            output_block_shape = (2 ** (self.start_res_log + i + 1), (2 ** (self.start_res_log + i + 1)) * 2,
+            output_block_shape = (2 ** (self.start_res_log + i + 1), (2 ** (self.start_res_log + i + 1)),
                                   decoder_filter_nums)
 
             self.decoder_blocks.append(self.build_decoder_block(decoder_filter_nums, decoder_input_shape,
@@ -76,7 +76,7 @@ class Generator(tf.keras.Model):
 
     def build_input_block(self, n_filters, res):
         init = RandomNormal(stddev=0.02)
-        input_tensor = tf.keras.layers.Input(shape=(res, res * 2, 3), name=f"input_{res}")
+        input_tensor = tf.keras.layers.Input(shape=(res,res, 3), name=f"input_{res}")
         i = Conv2D(n_filters, (3, 3), (1, 1), padding='same', kernel_initializer=init)(input_tensor)
         i = tf.keras.layers.LeakyReLU(0.2)(i)
         return keras.Model(input_tensor, i, name=f'input_{res}')
@@ -102,7 +102,7 @@ class Generator(tf.keras.Model):
         return keras.Model(input_tensor, d, name=f"dec_{res}")
 
     def grow(self, res):
-        input_tensor = tf.keras.layers.Input(shape=(2 ** self.target_res_log, (2 ** self.target_res_log * 2), 3))
+        input_tensor = tf.keras.layers.Input(shape=(2 ** self.target_res_log, (2 ** self.target_res_log), 3))
         idx = (log2(res) - self.start_res_log) + 1
         skip_tensors = []
         # encoding
@@ -132,5 +132,3 @@ class Generator(tf.keras.Model):
             x = self.output_blocks[i](x)
         return tf.keras.Model(input_tensor, x)
 
-test_generator = Generator(16, 256, len(rail_classes))
-test_generator = test_generator.grow(128)

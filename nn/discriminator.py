@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 from nn.gan_layers import build_conv_block, build_depthwise_block, build_transpose_block
-from utils import log2
+from utils.utils import log2
 
 """all necessary imports"""
 from tensorflow import keras
@@ -10,7 +10,6 @@ from tensorflow.keras.initializers import RandomNormal
 from tensorflow.keras.layers import Conv2D
 from tensorflow.keras.layers import Concatenate
 from tensorflow.keras import layers
-from railsem_class_info import rail_classes
 
 
 
@@ -40,7 +39,7 @@ class Discriminator:
         self.discriminator_depth = self.target_res_log - self.start_res_log
 
         for i in range(self.start_res_log, self.target_res_log + 1):
-            discriminator_input_shape = (2 ** i, (2 ** i) * 2, self.filter_nums[i])
+            discriminator_input_shape = (2 ** i, (2 ** i), self.filter_nums[i])
             self.discriminator_blocks.append(self.build_discriminator_block(discriminator_input_shape,
                                                                             self.filter_nums[i - 1],
                                                                             2 ** i))
@@ -51,8 +50,8 @@ class Discriminator:
         # n_channels is output channels
         # input is 1 channel as it's just a greyscale image
         init = RandomNormal(stddev=0.02)
-        image_input = tf.keras.layers.Input(shape=(res, res * 2, 3), name=f"imgin_{res}")
-        mask_input = tf.keras.layers.Input(shape=(res, res * 2, self.n_classes), name=f"maskin_{res}")
+        image_input = tf.keras.layers.Input(shape=(res, res, 3), name=f"imgin_{res}")
+        mask_input = tf.keras.layers.Input(shape=(res, res, self.n_classes), name=f"maskin_{res}")
 
         x = Concatenate()([image_input, mask_input])
         # x = tf.keras.layers.GaussianNoise(stddev = 0.15)(x)
@@ -74,8 +73,8 @@ class Discriminator:
         init = RandomNormal(stddev=0.02)
         res_log = log2(res) - self.start_res_log
         stages_current = res_log
-        input_image_tensor = layers.Input(shape=(res, res * 2, 3))
-        input_mask_tensor = layers.Input(shape=(res, res * 2, self.n_classes))
+        input_image_tensor = layers.Input(shape=(res, res, 3))
+        input_mask_tensor = layers.Input(shape=(res, res, self.n_classes))
         x = self.input_blocks[stages_current]([input_image_tensor, input_mask_tensor])
         # weird looking for loop cos we're counting backwards through the discriminator blocks
         for i in range(stages_current, -1, -1):
@@ -85,6 +84,3 @@ class Discriminator:
         # x = tf.keras.layers.Activation('sigmoid')(x)
         return keras.Model([input_image_tensor, input_mask_tensor], x)
 
-d_builder = Discriminator(32, 128, len(rail_classes))
-d = d_builder.grow(128)
-print(d)

@@ -4,12 +4,13 @@ import tensorflow as tf
 from nn.gan_layers import build_conv_block, build_depthwise_block, build_transpose_block
 from nn.generator import Generator
 from nn.discriminator import Discriminator
-from utils import log2
+from utils.utils import log2
 
 """all necessary imports"""
 from tensorflow import keras
 
 LAMBDA = 100
+
 
 
 class Prog_Seg_GAN(tf.keras.Model):
