@@ -68,9 +68,12 @@ class GanTrainer:
                 print('loaded weights')
 
     def generator_loss(self, disc_generated_output, gen_output, target):
+        #resizing and reshaping the gan loss so that it's the same size as the l1 loss
         gan_loss = self.loss_object(tf.ones_like(disc_generated_output), disc_generated_output)
+        gan_loss = tf.expand_dims(gan_loss, -1)
+        gan_loss = tf.image.resize(gan_loss,[self.model.current_res, self.model.current_res])
+        gan_loss = tf.squeeze(gan_loss)
         l1_loss = self.cce(target, gen_output)
-
         total_gen_loss = gan_loss + (self.config.LAMBDA * l1_loss)
         return total_gen_loss
 
@@ -124,7 +127,7 @@ class GanTrainer:
                 self.d_optimizer.apply_gradients(zip(discriminator_gradients,
                                                      self.model.dis_model.trainable_variables))
 
-                return gen_loss+dis_loss
+                return gen_loss
 
             per_example_losses = self.strategy.run(step_fn, args=(inputs,))
             sum_loss = self.strategy.reduce(tf.distribute.ReduceOp.SUM, per_example_losses, axis=0)
@@ -145,7 +148,7 @@ class GanTrainer:
                 gen_loss = self.generator_loss(disc_generated_output, gen_output, Y)
                 dis_loss = self.discriminator_loss(disc_real_output, disc_generated_output)
                 test_iou_metric.update_state(tf.argmax(Y, axis=-1), tf.argmax(gen_output, axis=-1))
-                return gen_loss+dis_loss
+                return gen_loss
 
             per_example_losses = self.strategy.run(step_fn, args=(inputs,))
             sum_loss = self.strategy.reduce(tf.distribute.ReduceOp.SUM, per_example_losses, axis=0)
@@ -158,7 +161,7 @@ class GanTrainer:
                     self.model.grow_model(2**current_res_log2)
                 #curr_batch_size = int(
                 #    (self.config.batch_size * (self.config.start_res[0] ** 2)) / (self.model.current_res**2))
-                curr_batch_size = 8
+                curr_batch_size = self.config.batch_size
                 for epoch in range(self.config.max_epochs):
                     pbar = tqdm(range(0, (len(self.train_dataset[0]) * self.config.num_passes), self.config.batch_size))
                     for i in pbar:
@@ -197,15 +200,18 @@ class GanTrainer:
 
                         vis_batch = load_batch(self.test_dataset[0], self.test_dataset[1], 0, 10, self.config.target_res,
                                                augment=False)
-                        if epoch % 15 == 0:
+                        if epoch % 3 == 0:
                             for i in range(10):
-                                logits = self.model(np.expand_dims(vis_batch[0][i], 0))
-                                vis = visualise_mask(tf.squeeze(logits), vis_batch[0][i])
+                                logits = self.model.gen_model(np.expand_dims(vis_batch[0][i], 0))
+                                print('logits shape ',logits.shape)
+                                vis = visualise_mask(tf.squeeze(logits), cv2.resize(vis_batch[0][i], (self.model.current_res,self.model.current_res)))
                                 vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
+                                vis = cv2.resize(vis, (512,512))
                                 cv2.imwrite(f'{self.img_dir}resolution_{2**current_res_log2}epoch_{epoch}_img{i}.jpg', vis)
-                                vis = visualise_mask(tf.squeeze(logits), np.zeros(np.shape(vis)))
+                                vis = visualise_mask(tf.squeeze(logits), np.zeros((self.model.current_res, self.model.current_res, 3)))
                                 vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
-                                cv2.imwrite(f'{self.img_dir}epoch_{epoch}_img_jm{i}.jpg', vis)
+                                vis = cv2.resize(vis, (512, 512))
+                                cv2.imwrite(f'{self.img_dir}resolution_{2**current_res_log2}epoch_{epoch}_img_jm{i}.jpg', vis)
                             self.model.dis_model.save_weights(
                                 f'{self.model_dir}dis_resolution{2**current_res_log2}epoch_{epoch}_trainIoU_{trainIoU:.3f}_testIoU_{testIoU:.3f}.h5')
                             self.model.gen_model.save_weights(

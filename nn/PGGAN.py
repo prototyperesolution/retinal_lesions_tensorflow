@@ -28,7 +28,7 @@ class Prog_Seg_GAN(tf.keras.Model):
         self.dis_model = self.d_builder.grow(res)
         self.current_res = res
 
-        print(f"\nModel resolution:{res}x{res * 2}")
+        print(f"\nModel resolution:{res}x{res}")
 
 
     def generator_loss(self, disc_generated_output, gen_output, target):

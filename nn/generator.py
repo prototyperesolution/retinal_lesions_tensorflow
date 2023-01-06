@@ -67,10 +67,10 @@ class Generator(tf.keras.Model):
     def build_encoder_block(self, n_filters, input_shape, res, stride=2):
         init = RandomNormal(stddev=0.02)
         input_tensor = tf.keras.layers.Input(shape=(input_shape), name=f"enc_{res}")
-        e = build_depthwise_block(input_shape, n_filters)(input_tensor)
-        e = build_depthwise_block((input_shape[0], input_shape[1], n_filters), n_filters)(e)
+        e = build_conv_block(input_shape, n_filters)(input_tensor)
+        e = build_conv_block((input_shape[0], input_shape[1], n_filters), n_filters)(e)
         if log2(res) <= (self.target_res_log - 2):
-            e = build_depthwise_block((input_shape[0], input_shape[1], n_filters), n_filters)(e)
+            e = build_conv_block((input_shape[0], input_shape[1], n_filters), n_filters)(e)
         e = tf.keras.layers.MaxPool2D(pool_size=(2, 2), strides=(stride, stride))(e)
         return keras.Model(input_tensor, e, name=f"enc_{res}")
 
@@ -95,10 +95,10 @@ class Generator(tf.keras.Model):
         init = RandomNormal(stddev=0.02)
         input_tensor = tf.keras.layers.Input(shape=(input_shape), name=f"dec_input_{2 ** (log2(res) - 1)}")
         d = build_transpose_block(input_shape, input_shape[-1])(input_tensor)
-        d = build_depthwise_block((input_shape[0] * 2, input_shape[1] * 2, input_shape[-1]), input_shape[-1])(d)
+        d = build_conv_block((input_shape[0] * 2, input_shape[1] * 2, input_shape[-1]), input_shape[-1])(d)
         if log2(res) <= (self.target_res_log - 2):
-            d = build_depthwise_block((input_shape[0] * 2, input_shape[1] * 2, input_shape[-1]), input_shape[-1])(d)
-        d = build_depthwise_block((input_shape[0] * 2, input_shape[1] * 2, input_shape[-1]), n_filters)(d)
+            d = build_conv_block((input_shape[0] * 2, input_shape[1] * 2, input_shape[-1]), input_shape[-1])(d)
+        d = build_conv_block((input_shape[0] * 2, input_shape[1] * 2, input_shape[-1]), n_filters)(d)
         return keras.Model(input_tensor, d, name=f"dec_{res}")
 
     def grow(self, res):
