@@ -1,5 +1,5 @@
 import tensorflow as tf
-from nn import PGGAN
+from nn.train.GAN_models import PGGAN
 import numpy as np
 import os
 from datetime import date

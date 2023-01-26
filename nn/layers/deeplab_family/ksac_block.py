@@ -1,7 +1,7 @@
 """takes as input a regular tensor then convolves it, then concatenates this with the global average pooling layer and ksac layer"""
 import tensorflow as tf
-from nn.layers.ksac_layer import KSAC_layer
-from nn.layers.ksac_pooling_layer import KSAC_pooling
+from nn.layers.deeplab_family.ksac_layer import KSAC_layer
+from nn.layers.deeplab_family.ksac_pooling_layer import KSAC_pooling
 
 
 class KSAC_block(tf.keras.layers.Layer):

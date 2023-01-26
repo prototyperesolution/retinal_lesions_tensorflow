@@ -1,9 +1,9 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import applications
-from nn.layers.ksac_block import KSAC_block
+from nn.layers.deeplab_family.ksac_block import KSAC_block
 import numpy as np
-from nn.layers.DeepLabV3_decoder import DeepLabV3_Decoder
+from nn.layers.deeplab_family.DeepLabV3_decoder import DeepLabV3_Decoder
 from utils.losses import focal_loss
 
 class KSAC_network(tf.keras.Model):

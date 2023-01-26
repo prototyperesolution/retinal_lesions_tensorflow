@@ -1,5 +1,5 @@
 from trainer import Trainer, TrainerConfig
-from nn.create_ksac_network import KSAC_network
+from nn.train.deeplab_models.create_ksac_network import KSAC_network
 from utils.indian_dr_dataset_prep import prep_dataset, load_dataset
 import tensorflow as tf
 import numpy as np

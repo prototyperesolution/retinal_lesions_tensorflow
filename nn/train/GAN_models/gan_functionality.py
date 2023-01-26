@@ -1,9 +1,9 @@
 import tensorflow as tf
 import numpy as np
-from nn.gan_layers import build_conv_block, build_depthwise_block, build_transpose_block
+from nn.train.GAN_models.gan_layers import build_conv_block, build_depthwise_block, build_transpose_block
 from utils import log2, one_hot_encode, resize_image
 from scipy.stats import entropy
-from nn.PGGAN import Prog_Seg_GAN
+from nn.train.GAN_models.PGGAN import Prog_Seg_GAN
 import matplotlib.pyplot as plt
 import cv2
 

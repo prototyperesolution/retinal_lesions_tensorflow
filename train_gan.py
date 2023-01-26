@@ -1,5 +1,5 @@
 from gan_trainer import GanTrainer, GanTrainerConfig
-from nn.PGGAN import Prog_Seg_GAN
+from nn.train.GAN_models.PGGAN import Prog_Seg_GAN
 from utils.indian_dr_dataset_prep import prep_dataset, load_dataset
 import tensorflow as tf
 import numpy as np
