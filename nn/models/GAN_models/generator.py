@@ -1,7 +1,6 @@
 """generator for GAN architecture"""
 
-import tensorflow as tf
-from nn.train.GAN_models.gan_layers import build_conv_block, build_depthwise_block, build_transpose_block
+from nn.layers.gan_layers.gan_layers import build_conv_block, build_transpose_block
 from utils.utils import log2
 
 """all necessary imports"""

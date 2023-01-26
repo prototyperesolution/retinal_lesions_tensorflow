@@ -1,5 +1,5 @@
 from gan_trainer import GanTrainer, GanTrainerConfig
-from nn.train.GAN_models.PGGAN import Prog_Seg_GAN
+from nn.models.GAN_models.PGGAN import Prog_Seg_GAN
 from utils.indian_dr_dataset_prep import prep_dataset, load_dataset
 import tensorflow as tf
 import numpy as np
@@ -13,7 +13,7 @@ current_res = (32,32)
 
 train_x,train_y,test_x,test_y = load_dataset('E:/indian dr dataset', target_res)
 
-print('train x shape',train_x.shape)
+print('models x shape',train_x.shape)
 
 train_dataset = (train_x,train_y)
 test_dataset = (test_x,test_y)

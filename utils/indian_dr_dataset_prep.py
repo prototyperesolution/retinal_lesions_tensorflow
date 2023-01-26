@@ -69,7 +69,7 @@ def load_dataset(path_to_dataset, img_size):
             curr_test_fn.append(file_y)
         y_test_fn.append(curr_test_fn)
 
-    """creating train dataset"""
+    """creating models dataset"""
 
     indices = [i for i in range(len(x_train_fn))]
     for index in indices:
