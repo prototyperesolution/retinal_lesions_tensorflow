@@ -27,5 +27,10 @@ mconf = {'start_res':start_res[0], 'target_res':target_res[0],'n_classes':np.sha
 
 trainer = GanTrainer(Prog_Seg_GAN, mconf, train_dataset, test_dataset, tconf)
 
+'''
+git pull test comment
+'''
+
+
 print('beginning training')
 trainer.train()
